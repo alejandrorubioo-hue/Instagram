@@ -1,15 +1,32 @@
 "use client";
 // 👆 Este componente se ejecuta del lado del cliente (navegador)
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function RegisterPage() {
-  // 📦 Estados tipados con TypeScript
   const [nombre, setNombre] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [telefono, setTelefono] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Validar que solo usuarios NO logueados puedan acceder
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        // ✅ Usuario NO logueado, mostramos la página
+        setLoading(false);
+      } else {
+        // ❌ Usuario logueado, redirige a perfil
+        router.push("/user");
+      }
+    };
+    checkUser();
+  }, [router]);
 
   // ⚙️ Esta función maneja el registro del usuario
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -55,6 +72,8 @@ export default function RegisterPage() {
     // ✅ Si todo sale bien:
     setMessage("✅ Usuario registrado y guardado correctamente. Revisa tu correo para confirmar.");
   };
+
+  if (loading) return <p className="text-center mt-10">Verificando sesión...</p>;
 
   return (
     <div className="max-w-sm mx-auto mt-10 p-6 border rounded-lg shadow">
@@ -102,6 +121,17 @@ export default function RegisterPage() {
       </form>
       {/* 💬 Mostramos el mensaje de éxito o error */}
       {message && <p className="mt-4 text-center">{message}</p>}
+
+      {/* 🔗 Enlace a la página de login */}
+      <p className="mt-4 text-center">
+        ¿Ya tienes cuenta?{" "}
+        <button
+          onClick={() => router.push("/login")}
+          className="text-blue-600 underline"
+        >
+          Inicia sesión aquí
+        </button>
+      </p>
     </div>
   );
 }
