@@ -1,8 +1,7 @@
 "use client";
-// 👆 Este componente se ejecuta del lado del cliente (navegador)
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabaseClient"; // Usa ruta relativa si el alias @ no funciona
+import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
   const [email, setEmail] = useState<string>("");
@@ -11,88 +10,126 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Validar que solo usuarios NO logueados puedan acceder
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        // ✅ Usuario NO logueado, mostramos la página
         setLoading(false);
       } else {
-        // ❌ Usuario logueado, redirige a perfil
         router.push("/user");
       }
     };
     checkUser();
   }, [router]);
 
-  // ⚙️ Esta función se ejecuta cuando el usuario envía el formulario de login
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // 👈 Evita que el formulario recargue la página
-    // 🚀 1️⃣ Autenticar usuario con Supabase (email y contraseña)
+    e.preventDefault();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    // 🧩 Si hay error en la autenticación, mostramos el mensaje
+
     if (error) {
-      setMessage("❌ Error al iniciar sesión: " + error.message);
+      setMessage("Nombre de usuario o contraseña incorrectos.");
       return;
     }
-    // ✅ Si el login es exitoso, guardamos el usuario en sesión
+
     if (data.user) {
-      setMessage("✅ Bienvenido, sesión iniciada correctamente.");
-      // Opcional: redirige automáticamente al perfil después de login exitoso
+      setMessage("✓ Bienvenido");
       setTimeout(() => {
-        router.push("/user");
-      }, 1000);
+        router.push("/");
+      }, 800);
     } else {
-      setMessage("⚠️ No se encontró el usuario. Intenta de nuevo.");
+      setMessage("No se encontró el usuario.");
     }
   };
 
-  if (loading) return <p className="text-center mt-10">Verificando sesión...</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <p className="text-gray-600">Cargando...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-sm mx-auto mt-10 p-6 border rounded-lg shadow">
-      <h1 className="text-xl font-bold mb-4 text-center">Inicio de sesión</h1>
-      {/* 📋 Al enviar el formulario se ejecuta handleLogin */}
-      <form onSubmit={handleLogin} className="flex flex-col gap-4">
-        {/* Campo para el correo */}
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="border p-2 rounded"
-        />
-        {/* Campo para la contraseña */}
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="border p-2 rounded"
-        />
-        <button type="submit" className="bg-green-600 text-white p-2 rounded">
-          Iniciar sesión
-        </button>
-      </form>
-      {/* 💬 Mostramos mensajes de éxito o error */}
-      {message && <p className="mt-4 text-center">{message}</p>}
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="w-full max-w-sm">
+        {/* Logo Instagram */}
+        <div className="bg-white border border-gray-300 rounded px-10 py-8 mb-3">
+          <h1
+            className="text-5xl text-center mb-8 font-normal"
+            style={{ fontFamily: 'Billabong, cursive' }}
+          >
+            Instagram
+          </h1>
 
-      {/* 🔗 Enlace a la página de registro */}
-      <p className="mt-4 text-center">
-        ¿No tienes cuenta?{" "}
-        <button
-          onClick={() => router.push("/register")}
-          className="text-blue-600 underline"
-        >
-          Regístrate aquí
-        </button>
-      </p>
+          {/* Formulario */}
+          <form onSubmit={handleLogin} className="flex flex-col gap-2">
+            <input
+              type="email"
+              placeholder="Teléfono, usuario o correo electrónico"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="border border-gray-300 rounded px-2 py-2 text-xs bg-gray-50 focus:outline-none focus:border-gray-400"
+            />
+
+            <input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="border border-gray-300 rounded px-2 py-2 text-xs bg-gray-50 focus:outline-none focus:border-gray-400"
+            />
+
+            <button
+              type="submit"
+              className="bg-blue-500 text-white rounded py-1.5 text-sm font-semibold mt-2 hover:bg-blue-600"
+            >
+              Entrar
+            </button>
+          </form>
+
+          {/* Mensaje de error/éxito */}
+          {message && (
+            <p className={`mt-4 text-center text-sm ${message.includes("✓") ? "text-green-600" : "text-red-500"}`}>
+              {message}
+            </p>
+          )}
+
+          {/* Divisor */}
+          <div className="flex items-center my-4">
+            <div className="flex-1 border-t border-gray-300"></div>
+            <span className="px-4 text-xs text-gray-500 font-semibold">O</span>
+            <div className="flex-1 border-t border-gray-300"></div>
+          </div>
+
+          {/* Olvidaste contraseña */}
+          <p className="text-center text-xs text-blue-900 cursor-pointer hover:underline">
+            ¿Olvidaste tu contraseña?
+          </p>
+        </div>
+
+        {/* Caja de registro */}
+        <div className="bg-white border border-gray-300 rounded px-10 py-5 text-center">
+          <p className="text-sm">
+            ¿No tienes una cuenta?{" "}
+            <button
+              onClick={() => router.push("/register")}
+              className="text-blue-500 font-semibold hover:underline"
+            >
+              Regístrate
+            </button>
+          </p>
+        </div>
+
+      
+         
+        
+        
+      </div>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-// 👆 Este componente se ejecuta del lado del cliente (navegador)
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
@@ -13,125 +12,148 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Validar que solo usuarios NO logueados puedan acceder
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        // ✅ Usuario NO logueado, mostramos la página
         setLoading(false);
       } else {
-        // ❌ Usuario logueado, redirige a perfil
         router.push("/user");
       }
     };
     checkUser();
   }, [router]);
 
-  // ⚙️ Esta función maneja el registro del usuario
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // 👈 Evita que el formulario recargue la página
+    e.preventDefault();
 
-    // 🚀 1️⃣ Registrar al usuario en el sistema de autenticación de Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
     });
 
-    // 🧩 Si hay error en la autenticación, detenemos el proceso
     if (authError) {
       setMessage("❌ Error en registro: " + authError.message);
       return;
     }
 
-    // ⚠️ Verificamos si Supabase devolvió un ID de usuario
     const userId = authData.user?.id;
     if (!userId) {
       setMessage("⚠️ No se pudo obtener el ID del usuario.");
       return;
     }
 
-    // 📘 2️⃣ Insertar los datos del usuario en la tabla 'usuarios'
     const { error: insertError } = await supabase
       .from("usuarios")
       .insert([
         {
-          id: userId, // 🧩 Usamos el mismo ID del sistema de autenticación
+          id: userId,
           nombre,
           correo: email,
           telefono,
         },
       ]);
 
-    // 🧩 Si hay error al insertar en la tabla
     if (insertError) {
       setMessage("⚠️ Usuario autenticado pero no guardado en la tabla: " + insertError.message);
       return;
     }
 
-    // ✅ Si todo sale bien:
-    setMessage("✅ Usuario registrado y guardado correctamente. Revisa tu correo para confirmar.");
+    setMessage("✅ Usuario registrado correctamente. Revisa tu correo para confirmar.");
   };
 
-  if (loading) return <p className="text-center mt-10">Verificando sesión...</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <p className="text-gray-600">Verificando sesión...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-sm mx-auto mt-10 p-6 border rounded-lg shadow">
-      <h1 className="text-xl font-bold mb-4 text-center">Registro de usuario</h1>
-      {/* 📋 Al enviar el formulario se ejecuta handleRegister */}
-      <form onSubmit={handleRegister} className="flex flex-col gap-4">
-        {/* Campo para el nombre */}
-        <input
-          type="text"
-          placeholder="Nombre completo"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          required
-          className="border p-2 rounded"
-        />
-        {/* Campo para el correo */}
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="border p-2 rounded"
-        />
-        {/* Campo para el teléfono */}
-        <input
-          type="tel"
-          placeholder="Teléfono"
-          value={telefono}
-          onChange={(e) => setTelefono(e.target.value)}
-          className="border p-2 rounded"
-        />
-        {/* Campo para la contraseña */}
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="border p-2 rounded"
-        />
-        <button type="submit" className="bg-blue-600 text-white p-2 rounded">
-          Registrarse
-        </button>
-      </form>
-      {/* 💬 Mostramos el mensaje de éxito o error */}
-      {message && <p className="mt-4 text-center">{message}</p>}
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
+      <div className="w-full max-w-sm">
+        {/* Logo Instagram */}
+        <div className="bg-white border border-gray-300 rounded-sm p-10 mb-3">
+          <h1
+            className="text-5xl text-center mb-8 font-normal"
+            style={{ fontFamily: 'Billabong, cursive' }}
+          >
+            Instagram
+          </h1>
 
-      {/* 🔗 Enlace a la página de login */}
-      <p className="mt-4 text-center">
-        ¿Ya tienes cuenta?{" "}
-        <button
-          onClick={() => router.push("/login")}
-          className="text-blue-600 underline"
-        >
-          Inicia sesión aquí
-        </button>
-      </p>
+          <p className="text-center text-gray-500 font-semibold text-base mb-6">
+            Regístrate para ver fotos y videos de tus amigos.
+          </p>
+
+          <form onSubmit={handleRegister} className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="Nombre completo"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              required
+              className="w-full px-2 py-2 text-xs border border-gray-300 rounded-sm bg-gray-50 focus:outline-none focus:border-gray-400"
+            />
+
+            <input
+              type="email"
+              placeholder="Correo electrónico"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-2 py-2 text-xs border border-gray-300 rounded-sm bg-gray-50 focus:outline-none focus:border-gray-400"
+            />
+
+            <input
+              type="tel"
+              placeholder="Teléfono (opcional)"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              className="w-full px-2 py-2 text-xs border border-gray-300 rounded-sm bg-gray-50 focus:outline-none focus:border-gray-400"
+            />
+
+            <input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-2 py-2 text-xs border border-gray-300 rounded-sm bg-gray-50 focus:outline-none focus:border-gray-400"
+            />
+
+            <button
+              type="submit"
+              className="w-full bg-blue-500 text-white font-semibold py-1.5 rounded-lg mt-2 hover:bg-blue-600 transition text-sm"
+            >
+              Registrarse
+            </button>
+          </form>
+
+          {message && (
+            <p className={`mt-4 text-center text-xs ${message.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+              {message}
+            </p>
+          )}
+
+          <p className="text-xs text-gray-500 text-center mt-4 leading-relaxed">
+            Al registrarte, aceptas nuestras Condiciones, la Política de privacidad y la Política de cookies.
+          </p>
+        </div>
+
+        {/* Enlace a Login */}
+        <div className="bg-white border border-gray-300 rounded-sm p-5 text-center">
+          <p className="text-sm">
+            ¿Ya tienes cuenta?{" "}
+            <button
+              onClick={() => router.push("/login")}
+              className="text-blue-500 font-semibold hover:text-blue-700"
+            >
+              Inicia sesión
+            </button>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
