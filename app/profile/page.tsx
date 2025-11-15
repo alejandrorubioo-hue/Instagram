@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
-import { Menu, Settings, Grid3x3, LogOut, Edit2, X, Check } from "lucide-react";
+import { Menu, Settings, Grid3x3, LogOut, Edit2, X, Check, Trash2 } from "lucide-react";
 
 interface Usuario {
   id: string;
@@ -25,6 +25,12 @@ export default function ProfilePage() {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
+
+  // Estados para el modal de eliminar
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<Publicacion | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const router = useRouter();
 
   // Validar usuario logueado y cargar datos
@@ -32,10 +38,8 @@ export default function ProfilePage() {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        // ❌ No hay usuario logueado → redirige a login
         router.push("/login");
       } else {
-        // ✅ Usuario logueado, cargamos datos
         fetchUsuario(data.user.id);
       }
     };
@@ -44,7 +48,6 @@ export default function ProfilePage() {
 
   // Cargar información del usuario y sus publicaciones
   const fetchUsuario = async (userId: string) => {
-    // Obtener datos del usuario
     const { data: userData, error: userError } = await supabase
       .from("usuarios")
       .select("id, nombre, correo, telefono")
@@ -62,7 +65,6 @@ export default function ProfilePage() {
       setNombre(userData.nombre);
       setTelefono(userData.telefono || "");
 
-      // Obtener publicaciones del usuario
       const { data: postsData } = await supabase
         .from("publicaciones")
         .select("id, imagen, descripcion")
@@ -103,6 +105,46 @@ export default function ProfilePage() {
     }
     setIsEditing(false);
     setMensaje(null);
+  };
+
+  // Abrir modal de confirmación para eliminar
+  const openDeleteModal = (post: Publicacion) => {
+    setPostToDelete(post);
+    setShowDeleteModal(true);
+  };
+
+  // Cerrar modal de eliminación
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setPostToDelete(null);
+  };
+
+  // ✅ Eliminar publicación (DELETE del CRUD)
+  const handleDeletePost = async () => {
+    if (!postToDelete || !usuario) return;
+
+    setDeleting(true);
+
+    // Eliminar la publicación (comentarios y likes se eliminan en cascada si configuraste las FK correctamente)
+    const { error } = await supabase
+      .from("publicaciones")
+      .delete()
+      .eq("id", postToDelete.id)
+      .eq("usuario_id", usuario.id); // Seguridad: solo el dueño puede eliminar
+
+    if (error) {
+      setMensaje("❌ Error al eliminar: " + error.message);
+      setDeleting(false);
+      closeDeleteModal();
+      setTimeout(() => setMensaje(null), 3000);
+    } else {
+      // Actualizar lista de publicaciones
+      setPublicaciones(prev => prev.filter(p => p.id !== postToDelete.id));
+      setMensaje("✅ Publicación eliminada correctamente");
+      setDeleting(false);
+      closeDeleteModal();
+      setTimeout(() => setMensaje(null), 3000);
+    }
   };
 
   // Cerrar sesión
@@ -223,7 +265,11 @@ export default function ProfilePage() {
 
         {/* Mensaje de feedback */}
         {mensaje && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-center">
+          <div className={`mb-4 p-3 border rounded text-sm text-center ${
+            mensaje.includes("❌")
+              ? "bg-red-50 border-red-200 text-red-700"
+              : "bg-green-50 border-green-200 text-green-700"
+          }`}>
             {mensaje}
           </div>
         )}
@@ -259,18 +305,80 @@ export default function ProfilePage() {
             {publicaciones.map((post) => (
               <div
                 key={post.id}
-                className="relative aspect-square bg-gray-100 cursor-pointer hover:opacity-90 transition"
+                className="relative aspect-square bg-gray-100 group"
               >
                 <img
                   src={post.imagen}
                   alt={post.descripcion}
                   className="w-full h-full object-cover"
                 />
+                {/* Overlay con botón de eliminar */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <button
+                    onClick={() => openDeleteModal(post)}
+                    className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteModal && postToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold mb-2">¿Eliminar publicación?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Esta acción no se puede deshacer. La publicación se eliminará permanentemente.
+            </p>
+
+            {/* Vista previa de la imagen */}
+            <div className="mb-6">
+              <img
+                src={postToDelete.imagen}
+                alt={postToDelete.descripcion}
+                className="w-full h-40 object-cover rounded"
+              />
+              {postToDelete.descripcion && (
+                <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                  {postToDelete.descripcion}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-lg disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeletePost}
+                disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
