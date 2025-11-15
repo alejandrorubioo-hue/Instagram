@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { Search, Play } from "lucide-react";
 
@@ -14,6 +15,28 @@ export default function ExplorePage() {
   const [posts, setPosts] = useState<ExplorePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    checkUserAndFetchData();
+  }, []);
+
+  // ✅ Verificar si hay usuario logueado
+  const checkUserAndFetchData = async () => {
+    const { data } = await supabase.auth.getUser();
+
+    if (!data.user) {
+      // ❌ No hay usuario logueado → Redirigir a login
+      router.push("/login");
+      return;
+    }
+
+    // ✅ Usuario logueado → Cargar datos
+    setCurrentUser(data.user);
+    await fetchExplorePosts();
+    setLoading(false);
+  };
 
   const fetchExplorePosts = async () => {
     const { data, error } = await supabase
@@ -25,12 +48,7 @@ export default function ExplorePage() {
     if (!error && data) {
       setPosts(data);
     }
-    setLoading(false);
   };
-
-  useEffect(() => {
-    fetchExplorePosts();
-  }, []);
 
   const filteredPosts = posts.filter(post =>
     post.descripcion?.toLowerCase().includes(searchQuery.toLowerCase())

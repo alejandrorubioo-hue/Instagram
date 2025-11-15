@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Volume2, VolumeX } from "lucide-react";
 
@@ -18,6 +19,28 @@ export default function ReelsPage() {
   const [likedReels, setLikedReels] = useState<Set<string>>(new Set());
   const [savedReels, setSavedReels] = useState<Set<string>>(new Set());
   const [muted, setMuted] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    checkUserAndFetchData();
+  }, []);
+
+  // ✅ Verificar si hay usuario logueado
+  const checkUserAndFetchData = async () => {
+    const { data } = await supabase.auth.getUser();
+
+    if (!data.user) {
+      // ❌ No hay usuario logueado → Redirigir a login
+      router.push("/login");
+      return;
+    }
+
+    // ✅ Usuario logueado → Cargar datos
+    setCurrentUser(data.user);
+    await fetchReels();
+    setLoading(false);
+  };
 
   const fetchReels = async () => {
     const { data, error } = await supabase
@@ -40,14 +63,11 @@ export default function ReelsPage() {
       }));
       setReels(reelsNormalizados);
     }
-    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchReels();
-  }, []);
-
   const toggleLike = (reelId: string) => {
+    if (!currentUser) return;
+
     setLikedReels(prev => {
       const newSet = new Set(prev);
       if (newSet.has(reelId)) {
@@ -60,6 +80,8 @@ export default function ReelsPage() {
   };
 
   const toggleSave = (reelId: string) => {
+    if (!currentUser) return;
+
     setSavedReels(prev => {
       const newSet = new Set(prev);
       if (newSet.has(reelId)) {

@@ -25,6 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
+      <head>
+        {/* Fuente para el logo de Instagram */}
+        <link href="https://fonts.googleapis.com/css2?family=Lobster+Two:wght@700&display=swap" rel="stylesheet" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white min-h-screen`}>
         {/* Contenido principal con padding bottom para el nav */}
         <main className="pb-12 min-h-screen">
