@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X } from "lucide-react";
 
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const router = useRouter();
 
   // Estados para likes
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
@@ -39,16 +41,24 @@ export default function HomePage() {
   const [comentarioCounts, setComentarioCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetchCurrentUser();
-    fetchPosts();
+    checkUserAndFetchData();
   }, []);
 
-  const fetchCurrentUser = async () => {
+  // ✅ Verificar si hay usuario logueado
+  const checkUserAndFetchData = async () => {
     const { data } = await supabase.auth.getUser();
-    setCurrentUser(data.user);
-    if (data.user) {
-      fetchUserLikes(data.user.id);
+
+    if (!data.user) {
+      // ❌ No hay usuario logueado → Redirigir a login
+      router.push("/login");
+      return;
     }
+
+    // ✅ Usuario logueado → Cargar datos
+    setCurrentUser(data.user);
+    fetchUserLikes(data.user.id);
+    await fetchPosts();
+    setLoading(false);
   };
 
   const fetchPosts = async () => {
@@ -72,7 +82,6 @@ export default function HomePage() {
         fetchComentarioCount(post.id);
       });
     }
-    setLoading(false);
   };
 
   const fetchUserLikes = async (userId: string) => {
@@ -105,15 +114,11 @@ export default function HomePage() {
   };
 
   const toggleLike = async (postId: string) => {
-    if (!currentUser) {
-      alert("Debes iniciar sesión para dar like");
-      return;
-    }
+    if (!currentUser) return;
 
     const isLiked = likedPosts.has(postId);
 
     if (isLiked) {
-      // Quitar like
       await supabase
         .from("likes")
         .delete()
@@ -127,7 +132,6 @@ export default function HomePage() {
       });
       setLikeCounts(prev => ({ ...prev, [postId]: (prev[postId] || 1) - 1 }));
     } else {
-      // Dar like
       await supabase
         .from("likes")
         .insert({ usuario_id: currentUser.id, publicacion_id: postId });
@@ -155,12 +159,7 @@ export default function HomePage() {
   };
 
   const agregarComentario = async (postId: string) => {
-    if (!currentUser) {
-      alert("Debes iniciar sesión para comentar");
-      return;
-    }
-
-    if (!nuevoComentario.trim()) return;
+    if (!currentUser || !nuevoComentario.trim()) return;
 
     const { error } = await supabase
       .from("comentarios")
@@ -182,7 +181,6 @@ export default function HomePage() {
     fetchComentarios(postId);
   };
 
-  // Función helper para obtener el nombre del usuario
   const getNombreUsuario = (usuario: Usuario | Usuario[] | undefined): string => {
     if (!usuario) return "Usuario";
     if (Array.isArray(usuario)) return usuario[0]?.nombre || "Usuario";
@@ -200,10 +198,13 @@ export default function HomePage() {
   return (
     <div className="bg-white min-h-screen pb-16">
       <link href="https://fonts.googleapis.com/css2?family=Lobster+Two:wght@700&display=swap" rel="stylesheet" />
+
       {/* Header */}
       <div className="sticky top-0 bg-white z-40 px-4 py-3 border-b border-gray-200">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold font-serif">Instagram</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "'Lobster Two', cursive" }}>
+            Instagram
+          </h1>
           <div className="flex gap-4">
             <Heart className="w-6 h-6" />
             <Send className="w-6 h-6" />
