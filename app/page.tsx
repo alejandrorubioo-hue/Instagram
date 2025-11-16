@@ -52,7 +52,6 @@ export default function HomePage() {
     checkUserAndFetchData();
   }, []);
 
-  // ✅ Verificar si hay usuario logueado
   const checkUserAndFetchData = async () => {
     const { data } = await supabase.auth.getUser();
 
@@ -182,13 +181,11 @@ export default function HomePage() {
     }
   };
 
-  // Iniciar edición de comentario
   const startEditComment = (comentario: Comentario) => {
     setEditingCommentId(comentario.id);
     setEditingCommentText(comentario.texto);
   };
 
-  // Guardar comentario editado
   const saveEditComment = async (postId: string) => {
     if (!editingCommentId || !editingCommentText.trim()) return;
 
@@ -204,25 +201,21 @@ export default function HomePage() {
     }
   };
 
-  // Cancelar edición
   const cancelEdit = () => {
     setEditingCommentId(null);
     setEditingCommentText("");
   };
 
-  // Abrir modal de confirmación para eliminar
   const openDeleteModal = (commentId: string) => {
     setCommentToDelete(commentId);
     setShowDeleteModal(true);
   };
 
-  // Cerrar modal de eliminación
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
     setCommentToDelete(null);
   };
 
-  // Eliminar comentario
   const deleteComment = async (postId: string) => {
     if (!commentToDelete) return;
 
@@ -252,6 +245,8 @@ export default function HomePage() {
     if (Array.isArray(usuario)) return usuario[0]?.nombre || "Usuario";
     return usuario.nombre || "Usuario";
   };
+
+  const currentPost = posts.find(p => p.id === showComments);
 
   if (loading) {
     return (
@@ -371,19 +366,28 @@ export default function HomePage() {
       </div>
 
       {/* Modal de Comentarios */}
-      {showComments && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-t-2xl rounded-t-2xl max-h-[80vh] flex flex-col">
+      {showComments && currentPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
+          <div className="bg-white w-full h-full flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
               <h3 className="font-semibold">Comentarios</h3>
               <button onClick={() => setShowComments(null)}>
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Lista de comentarios */}
-            <div className="flex-1 overflow-y-auto p-4">
+            {/* Imagen de la publicación */}
+            <div className="w-full flex-shrink-0">
+              <img
+                src={currentPost.imagen}
+                alt={currentPost.descripcion}
+                className="w-full h-48 object-cover"
+              />
+            </div>
+
+            {/* Lista de comentarios con scroll */}
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
               {comentarios[showComments]?.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   Aún no hay comentarios
@@ -395,7 +399,7 @@ export default function HomePage() {
                   const isEditing = editingCommentId === comentario.id;
 
                   return (
-                    <div key={comentario.id} className="mb-4 group">
+                    <div key={comentario.id} className="mb-4">
                       <div className="flex gap-2">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-xs font-semibold">
@@ -439,18 +443,19 @@ export default function HomePage() {
                                 <p className="text-xs text-gray-400">
                                   {new Date(comentario.creado_en).toLocaleDateString("es-ES")}
                                 </p>
+                                {/* Botones siempre visibles */}
                                 {isOwner && (
-                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="flex gap-2">
                                     <button
                                       onClick={() => startEditComment(comentario)}
-                                      className="text-xs text-gray-500 hover:text-blue-500 flex items-center gap-1"
+                                      className="text-xs text-gray-500 active:text-blue-500 flex items-center gap-1"
                                     >
                                       <Edit2 className="w-3 h-3" />
                                       Editar
                                     </button>
                                     <button
                                       onClick={() => openDeleteModal(comentario.id)}
-                                      className="text-xs text-gray-500 hover:text-red-500 flex items-center gap-1"
+                                      className="text-xs text-gray-500 active:text-red-500 flex items-center gap-1"
                                     >
                                       <Trash2 className="w-3 h-3" />
                                       Eliminar
@@ -468,9 +473,9 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Input para nuevo comentario */}
+            {/* Input fijo en la parte inferior - AJUSTADO */}
             {currentUser && (
-              <div className="border-t p-4">
+              <div className="border-t p-4 bg-white absolute bottom-16 left-0 right-0 z-[60]">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -500,7 +505,7 @@ export default function HomePage() {
 
       {/* Modal de confirmación para eliminar comentario */}
       {showDeleteModal && commentToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-sm w-full p-6">
             <h3 className="text-lg font-semibold mb-2">¿Eliminar comentario?</h3>
             <p className="text-sm text-gray-600 mb-6">
