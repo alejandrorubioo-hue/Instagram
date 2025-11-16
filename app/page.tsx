@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X, Edit2, Trash2 } from "lucide-react";
 
 interface Usuario {
   nombre: string;
@@ -21,6 +21,7 @@ interface Comentario {
   id: string;
   texto: string;
   creado_en: string;
+  usuario_id: string;
   usuario: Usuario | Usuario[];
 }
 
@@ -40,6 +41,13 @@ export default function HomePage() {
   const [nuevoComentario, setNuevoComentario] = useState("");
   const [comentarioCounts, setComentarioCounts] = useState<Record<string, number>>({});
 
+  // Estados para editar/eliminar comentarios
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     checkUserAndFetchData();
   }, []);
@@ -49,12 +57,10 @@ export default function HomePage() {
     const { data } = await supabase.auth.getUser();
 
     if (!data.user) {
-      // ❌ No hay usuario logueado → Redirigir a login
       router.push("/login");
       return;
     }
 
-    // ✅ Usuario logueado → Cargar datos
     setCurrentUser(data.user);
     fetchUserLikes(data.user.id);
     await fetchPosts();
@@ -76,7 +82,6 @@ export default function HomePage() {
 
     if (!error && data) {
       setPosts(data as Post[]);
-      // Obtener conteos de likes y comentarios
       data.forEach(post => {
         fetchLikeCount(post.id);
         fetchComentarioCount(post.id);
@@ -148,6 +153,7 @@ export default function HomePage() {
         id,
         texto,
         creado_en,
+        usuario_id,
         usuario:usuarios!usuario_id(nombre)
       `)
       .eq("publicacion_id", postId)
@@ -174,6 +180,66 @@ export default function HomePage() {
       fetchComentarios(postId);
       fetchComentarioCount(postId);
     }
+  };
+
+  // Iniciar edición de comentario
+  const startEditComment = (comentario: Comentario) => {
+    setEditingCommentId(comentario.id);
+    setEditingCommentText(comentario.texto);
+  };
+
+  // Guardar comentario editado
+  const saveEditComment = async (postId: string) => {
+    if (!editingCommentId || !editingCommentText.trim()) return;
+
+    const { error } = await supabase
+      .from("comentarios")
+      .update({ texto: editingCommentText.trim() })
+      .eq("id", editingCommentId);
+
+    if (!error) {
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      fetchComentarios(postId);
+    }
+  };
+
+  // Cancelar edición
+  const cancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentText("");
+  };
+
+  // Abrir modal de confirmación para eliminar
+  const openDeleteModal = (commentId: string) => {
+    setCommentToDelete(commentId);
+    setShowDeleteModal(true);
+  };
+
+  // Cerrar modal de eliminación
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setCommentToDelete(null);
+  };
+
+  // Eliminar comentario
+  const deleteComment = async (postId: string) => {
+    if (!commentToDelete) return;
+
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from("comentarios")
+      .delete()
+      .eq("id", commentToDelete);
+
+    if (!error) {
+      fetchComentarios(postId);
+      fetchComentarioCount(postId);
+    }
+
+    setDeleting(false);
+    closeDeleteModal();
   };
 
   const abrirComentarios = (postId: string) => {
@@ -325,8 +391,11 @@ export default function HomePage() {
               ) : (
                 comentarios[showComments]?.map((comentario) => {
                   const nombreComentario = getNombreUsuario(comentario.usuario);
+                  const isOwner = currentUser && comentario.usuario_id === currentUser.id;
+                  const isEditing = editingCommentId === comentario.id;
+
                   return (
-                    <div key={comentario.id} className="mb-4">
+                    <div key={comentario.id} className="mb-4 group">
                       <div className="flex gap-2">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-xs font-semibold">
@@ -334,15 +403,63 @@ export default function HomePage() {
                           </span>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm">
-                            <span className="font-semibold mr-2">
-                              {nombreComentario}
-                            </span>
-                            {comentario.texto}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {new Date(comentario.creado_en).toLocaleDateString("es-ES")}
-                          </p>
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                value={editingCommentText}
+                                onChange={(e) => setEditingCommentText(e.target.value)}
+                                className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500"
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => saveEditComment(showComments)}
+                                  className="text-xs text-blue-500 font-semibold"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="text-xs text-gray-500"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-sm">
+                                <span className="font-semibold mr-2">
+                                  {nombreComentario}
+                                </span>
+                                {comentario.texto}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-xs text-gray-400">
+                                  {new Date(comentario.creado_en).toLocaleDateString("es-ES")}
+                                </p>
+                                {isOwner && (
+                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => startEditComment(comentario)}
+                                      className="text-xs text-gray-500 hover:text-blue-500 flex items-center gap-1"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() => openDeleteModal(comentario.id)}
+                                      className="text-xs text-gray-500 hover:text-red-500 flex items-center gap-1"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -377,6 +494,45 @@ export default function HomePage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para eliminar comentario */}
+      {showDeleteModal && commentToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold mb-2">¿Eliminar comentario?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Esta acción no se puede deshacer.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-lg disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteComment(showComments!)}
+                disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

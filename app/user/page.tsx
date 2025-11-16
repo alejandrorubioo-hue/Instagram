@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
-import { Menu, Settings, Grid3x3, LogOut, X } from "lucide-react";
+import { Menu, Settings, Grid3x3, LogOut, X, Trash2 } from "lucide-react";
 
 interface Usuario {
   id: string;
@@ -25,6 +25,12 @@ export default function UsuarioPage() {
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Estados para eliminar
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<Publicacion | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -53,7 +59,6 @@ export default function UsuarioPage() {
       setNombre(userData.nombre);
       setTelefono(userData.telefono || "");
 
-      // Cargar publicaciones del usuario
       const { data: postsData } = await supabase
         .from("publicaciones")
         .select("id, imagen, descripcion")
@@ -89,6 +94,44 @@ export default function UsuarioPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  // Abrir modal de confirmación
+  const openDeleteModal = (post: Publicacion) => {
+    setPostToDelete(post);
+    setShowDeleteModal(true);
+  };
+
+  // Cerrar modal
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setPostToDelete(null);
+  };
+
+  // Eliminar publicación
+  const handleDeletePost = async () => {
+    if (!postToDelete || !usuario) return;
+
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from("publicaciones")
+      .delete()
+      .eq("id", postToDelete.id)
+      .eq("usuario_id", usuario.id);
+
+    if (error) {
+      setMensaje("❌ Error al eliminar: " + error.message);
+      setDeleting(false);
+      closeDeleteModal();
+      setTimeout(() => setMensaje(null), 3000);
+    } else {
+      setPublicaciones(prev => prev.filter(p => p.id !== postToDelete.id));
+      setMensaje("✅ Publicación eliminada correctamente");
+      setDeleting(false);
+      closeDeleteModal();
+      setTimeout(() => setMensaje(null), 3000);
+    }
   };
 
   if (loading) {
@@ -179,8 +222,12 @@ export default function UsuarioPage() {
 
         {/* Success Message */}
         {mensaje && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="text-sm text-green-700">{mensaje}</p>
+          <div className={`mb-4 p-3 border rounded-lg text-center ${
+            mensaje.includes("❌")
+              ? "bg-red-50 border-red-200 text-red-700"
+              : "bg-green-50 border-green-200 text-green-700"
+          }`}>
+            <p className="text-sm">{mensaje}</p>
           </div>
         )}
 
@@ -201,13 +248,23 @@ export default function UsuarioPage() {
             {publicaciones.map((post) => (
               <div
                 key={post.id}
-                className="aspect-square bg-gray-100 cursor-pointer hover:opacity-90 transition"
+                className="relative aspect-square bg-gray-100 group cursor-pointer"
               >
                 <img
                   src={post.imagen}
                   alt={post.descripcion}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-70"
                 />
+                {/* Overlay sutil con icono de basura */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={() => openDeleteModal(post)}
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                    title="Eliminar publicación"
+                  >
+                    <Trash2 className="w-8 h-8" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -218,7 +275,6 @@ export default function UsuarioPage() {
       {isEditing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Editar perfil</h2>
               <button
@@ -233,10 +289,8 @@ export default function UsuarioPage() {
               </button>
             </div>
 
-            {/* Modal Form */}
             <form onSubmit={handleUpdate} className="p-5">
               <div className="space-y-5">
-                {/* Nombre */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nombre
@@ -251,7 +305,6 @@ export default function UsuarioPage() {
                   />
                 </div>
 
-                {/* Teléfono */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Teléfono
@@ -265,7 +318,6 @@ export default function UsuarioPage() {
                   />
                 </div>
 
-                {/* Correo (Read-only) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Correo
@@ -279,7 +331,6 @@ export default function UsuarioPage() {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
@@ -287,6 +338,58 @@ export default function UsuarioPage() {
                 ✓ Guardar cambios
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && postToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold mb-2">¿Eliminar publicación?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Esta acción no se puede deshacer. La publicación se eliminará permanentemente.
+            </p>
+
+            <div className="mb-6">
+              <img
+                src={postToDelete.imagen}
+                alt={postToDelete.descripcion}
+                className="w-full h-40 object-cover rounded"
+              />
+              {postToDelete.descripcion && (
+                <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                  {postToDelete.descripcion}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-lg disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeletePost}
+                disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
