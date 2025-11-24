@@ -24,20 +24,22 @@ export default function ReelsPage() {
 
   useEffect(() => {
     checkUserAndFetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ✅ Verificar si hay usuario logueado
   const checkUserAndFetchData = async () => {
-    const { data } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getSession();
+    const user = data?.session?.user;
 
-    if (!data.user) {
+    if (!user) {
       // ❌ No hay usuario logueado → Redirigir a login
       router.push("/login");
       return;
     }
 
     // ✅ Usuario logueado → Cargar datos
-    setCurrentUser(data.user);
+    setCurrentUser(user);
     await fetchReels();
     setLoading(false);
   };
@@ -130,7 +132,7 @@ export default function ReelsPage() {
                   className="w-full h-full object-cover"
                 />
                 {/* Overlay oscuro */}
-               {/* <div className="absolute inset-0 bg-black/20"></div>*/}
+                {/* <div className="absolute inset-0 bg-black/20"></div> */}
               </div>
 
               {/* Controles laterales derechos */}
@@ -222,4 +224,4 @@ export default function ReelsPage() {
       </div>
     </div>
   );
-}
+  }
