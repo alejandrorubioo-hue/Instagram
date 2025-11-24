@@ -130,7 +130,7 @@ export default function ReelsPage() {
                   className="w-full h-full object-cover"
                 />
                 {/* Overlay oscuro */}
-                <div className="absolute inset-0 bg-black/20"></div>
+               {/* <div className="absolute inset-0 bg-black/20"></div>*/}
               </div>
 
               {/* Controles laterales derechos */}
