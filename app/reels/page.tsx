@@ -141,7 +141,7 @@ export default function ReelsPage() {
                   src={isAllowedImageUrl(reel.imagen) ? reel.imagen : UNSPLASH_DEFAULT}
                   alt={reel.descripcion}
                   className="w-full h-full object-contain"
-                  style={{ background: "red" }}
+                  
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = UNSPLASH_DEFAULT;
                   }}
