@@ -69,12 +69,13 @@ export default function ReelsPage() {
               key={reel.id}
               className="flex items-center justify-center h-screen bg-black snap-start"
             >
+              {/* Imagen de Unsplash para depuración */}
               <img
-                src={reel.imagen}
-                alt={reel.descripcion}
+                src="https://images.unsplash.com/photo-1518717758536-85ae29035b6d"
+                alt="Test"
                 className="w-full h-full object-contain"
                 style={{ background: "red" }}
-                onError={() => console.log("Error cargando imagen:", reel.imagen)}
+                onError={() => console.log("Error cargando imagen")}
               />
             </div>
           ))
