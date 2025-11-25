@@ -13,6 +13,13 @@ interface Reel {
   usuario?: { nombre: string };
 }
 
+const UNSPLASH_DEFAULT = "https://images.unsplash.com/photo-1518717758536-85ae29035b6d";
+
+function isUnsplashOrAllowed(url: string) {
+  // Puedes agregar más dominios aquí si los habilitas en tu app
+  return url.startsWith("https://images.unsplash.com/");
+}
+
 export default function ReelsPage() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,14 +128,103 @@ export default function ReelsPage() {
               key={reel.id}
               className="relative h-screen snap-start snap-always flex items-center justify-center"
             >
-              {/* Imagen de Unsplash para depuración */}
-              <img
-                src="https://images.unsplash.com/photo-1518717758536-85ae29035b6d"
-                alt="Test"
-                className="w-full h-full object-contain"
-                style={{ background: "red" }}
-                onError={() => console.log("Error cargando imagen")}
-              />
+              {/* Imagen del reel */}
+              <div className="absolute inset-0">
+                <img
+                  src={isUnsplashOrAllowed(reel.imagen) ? reel.imagen : UNSPLASH_DEFAULT}
+                  alt={reel.descripcion}
+                  className="w-full h-full object-cover"
+                  style={{ background: "red" }}
+                  onError={(e) => {
+                    // Si la imagen falla, usa la de Unsplash
+                    (e.target as HTMLImageElement).src = UNSPLASH_DEFAULT;
+                  }}
+                />
+              </div>
+
+              {/* Controles laterales derechos */}
+              <div className="absolute right-3 bottom-24 flex flex-col gap-6 z-10">
+                {/* Avatar */}
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                      <div className="w-11 h-11 rounded-full bg-gray-300 flex items-center justify-center text-sm font-semibold text-gray-700">
+                        {reel.usuario?.nombre?.[0]?.toUpperCase() || "U"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Like */}
+                <button
+                  onClick={() => toggleLike(reel.id)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <Heart
+                    className={`w-7 h-7 ${likedReels.has(reel.id) ? 'fill-red-500 text-red-500' : 'text-white'}`}
+                    strokeWidth={2}
+                  />
+                  <span className="text-white text-xs font-semibold">
+                    {likedReels.has(reel.id) ? '1' : '0'}
+                  </span>
+                </button>
+
+                {/* Comentarios */}
+                <button className="flex flex-col items-center gap-1">
+                  <MessageCircle className="w-7 h-7 text-white" strokeWidth={2} />
+                  <span className="text-white text-xs font-semibold">0</span>
+                </button>
+
+                {/* Compartir */}
+                <button className="flex flex-col items-center gap-1">
+                  <Send className="w-7 h-7 text-white" strokeWidth={2} />
+                </button>
+
+                {/* Guardar */}
+                <button
+                  onClick={() => toggleSave(reel.id)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <Bookmark
+                    className={`w-7 h-7 ${savedReels.has(reel.id) ? 'fill-white text-white' : 'text-white'}`}
+                    strokeWidth={2}
+                  />
+                </button>
+
+                {/* Más opciones */}
+                <button className="flex flex-col items-center gap-1">
+                  <MoreHorizontal className="w-7 h-7 text-white" strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* Información inferior */}
+              <div className="absolute bottom-24 left-3 right-20 z-10">
+                <div className="text-white">
+                  <p className="font-semibold text-sm mb-2">
+                    @{reel.usuario?.nombre || "usuario"}
+                  </p>
+                  <p className="text-sm mb-2 line-clamp-2">
+                    {reel.descripcion}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                      <p className="text-xs">🎵 Audio original</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón de audio (decorativo) */}
+              <button
+                onClick={() => setMuted(!muted)}
+                className="absolute top-20 right-3 z-10 bg-black/50 backdrop-blur-sm p-2 rounded-full"
+              >
+                {muted ? (
+                  <VolumeX className="w-5 h-5 text-white" />
+                ) : (
+                  <Volume2 className="w-5 h-5 text-white" />
+                )}
+              </button>
             </div>
           ))
         )}
