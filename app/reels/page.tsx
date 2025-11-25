@@ -53,7 +53,11 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="bg-black min-h-screen">
+    <div className="bg-red-500 min-h-screen">
+      {/* Texto de prueba para depuración */}
+      <div className="text-white text-3xl text-center py-8">
+        ¿Se ve este texto en el APK?
+      </div>
       <div className="snap-y snap-mandatory h-screen overflow-y-scroll">
         {reels.length === 0 ? (
           <div className="h-screen flex items-center justify-center">
